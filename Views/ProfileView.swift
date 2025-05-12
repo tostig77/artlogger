@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct ProfileView: View {
+    @EnvironmentObject var session: SessionStore
+    
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
@@ -82,6 +84,21 @@ struct ProfileView: View {
                         .padding(.horizontal)
                     }
                 }
+                
+                // Sign Out Button
+                Button(action: {
+                    session.signOut()
+                }) {
+                    Text("Sign Out")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.red)
+                        .cornerRadius(10)
+                }
+                .padding(.horizontal)
+                .padding(.top, 30)
             }
             .padding(.vertical)
         }
@@ -120,4 +137,3 @@ struct ArtworkThumbnail: View {
         }
     }
 }
-

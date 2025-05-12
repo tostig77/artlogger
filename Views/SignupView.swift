@@ -3,78 +3,62 @@ import Firebase
 
 struct SignupView: View {
     @EnvironmentObject var session: SessionStore
+    @Environment(\.presentationMode) var presentationMode
+    
+    var onComplete: (Bool) -> Void
     
     @State private var email = ""
     @State private var password = ""
     @State private var error: String?
-    @State private var isProfileSetup = false  // To track if profile setup is needed
-    @State private var username = ""
-    @State private var bio = ""
-    @State private var screenName = ""
+    @State private var isLoading = false
     
     var body: some View {
         VStack(spacing: 20) {
-            if isProfileSetup {
-                // Profile creation view
-                TextField("Username", text: $username)
-                    .textFieldStyle(.roundedBorder)
-                TextField("Screen Name", text: $screenName)
-                    .textFieldStyle(.roundedBorder)
-                TextField("Bio", text: $bio)
-                    .textFieldStyle(.roundedBorder)
-                
-                if let error = error {
-                    Text(error).foregroundColor(.red)
-                }
-                
-                Button("Create Profile") {
-                    createProfile()
-                }
-                .padding()
-            } else {
-                // Regular sign-up view
-                TextField("Email", text: $email).autocapitalization(.none).textFieldStyle(.roundedBorder)
-                SecureField("Password", text: $password).textFieldStyle(.roundedBorder)
+            TextField("Email", text: $email)
+                .autocapitalization(.none)
+                .textFieldStyle(.roundedBorder)
+                .keyboardType(.emailAddress)
+            
+            SecureField("Password", text: $password)
+                .textFieldStyle(.roundedBorder)
 
-                if let error = error {
-                    Text(error).foregroundColor(.red)
-                }
+            if let error = error {
+                Text(error).foregroundColor(.red)
+            }
 
-                Button("Sign Up") {
-                    session.signUp(email: email, password: password) { err in
-                        if let err = err {
-                            error = err.localizedDescription
-                        } else {
-                            // If signup is successful, proceed to profile setup
-                            isProfileSetup = true
-                        }
-                    }
+            Button(action: {
+                signUp()
+            }) {
+                if isLoading {
+                    ProgressView()
+                } else {
+                    Text("Sign Up")
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
                 }
             }
+            .disabled(email.isEmpty || password.isEmpty || isLoading)
         }
         .padding()
-        .navigationTitle(isProfileSetup ? "Create Profile" : "Sign Up")
+        .navigationTitle("Sign Up")
     }
-
-    func createProfile() {
+    
+    func signUp() {
+        isLoading = true
+        error = nil
         
-        let db = Firestore.firestore()
-        
-        // Create a dictionary with the profile data
-        let profileData: [String: Any] = [
-            "username": username,
-            "screenName": screenName,
-            "bio": bio,
-            "email": email
-        ]
-        
-        // Save to Firestore
-        db.collection("users").document(email).setData(profileData) { error in
-            if let error = error {
-                self.error = error.localizedDescription
+        session.signUp(email: email, password: password) { err in
+            isLoading = false
+            if let err = err {
+                error = err.localizedDescription
             } else {
-                // Redirect to profile or home page after profile creation
-                print("Profile created successfully.")
+                // Signal that profile setup is needed
+                onComplete(true)
+                // Go back to the entry view which will now show profile setup
+                presentationMode.wrappedValue.dismiss()
             }
         }
     }
