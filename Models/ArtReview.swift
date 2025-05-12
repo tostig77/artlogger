@@ -9,4 +9,5 @@ struct ArtReview: Identifiable {
     var imageURL: String? = nil
     var artistWikidataURL: String? = nil
     var artistULANURL: String? = nil
+    var metSourceId: String? = nil  // Added field for Met artworks
 }

@@ -129,13 +129,13 @@ class FirestoreService {
         }
     }
     
-    /// Save review for Met artwork
     func saveReviewForMetArtwork(userId: String, metSourceId: String, review: ArtReview, completion: @escaping (Result<String, Error>) -> Void) {
         // Create the review data
         let reviewId = review.id.uuidString
         var reviewData: [String: Any] = [
             "userId": userId,
-            "metSourceId": metSourceId,
+            "metSourceId": metSourceId,  // Store the Met Source ID directly
+            "artworkId": review.artworkId.uuidString,  // Still store the artworkId for consistency
             "dateViewed": review.dateViewed,
             "location": review.location,
             "reviewText": review.reviewText,
@@ -191,8 +191,18 @@ class FirestoreService {
                 for document in snapshot?.documents ?? [] {
                     let data = document.data()
                     
+                    // Check if this is a Met artwork review
+                    let metSourceId = data["metSourceId"] as? String
+                    
                     // Extract artworkId (could be manual or Met)
-                    let artworkId = UUID(uuidString: data["artworkId"] as? String ?? "") ?? UUID()
+                    let artworkId: UUID
+                    if let artworkIdStr = data["artworkId"] as? String,
+                       let uuid = UUID(uuidString: artworkIdStr) {
+                        artworkId = uuid
+                    } else {
+                        // Generate a random UUID if none exists
+                        artworkId = UUID()
+                    }
                     
                     // Extract date
                     let dateViewed: Date
@@ -202,7 +212,7 @@ class FirestoreService {
                         dateViewed = Date()
                     }
                     
-                    let review = ArtReview(
+                    var review = ArtReview(
                         artworkId: artworkId,
                         dateViewed: dateViewed,
                         location: data["location"] as? String ?? "",
@@ -211,6 +221,22 @@ class FirestoreService {
                         artistWikidataURL: data["artistWikidataURL"] as? String,
                         artistULANURL: data["artistULANURL"] as? String
                     )
+                    
+                    // Set the metSourceId if it exists
+                    if let metId = metSourceId {
+                        // Create a new review with the metSourceId set
+                        // (since ArtReview is a struct, we need to create a new instance)
+                        review = ArtReview(
+                            artworkId: review.artworkId,
+                            dateViewed: review.dateViewed,
+                            location: review.location,
+                            reviewText: review.reviewText,
+                            imageURL: review.imageURL,
+                            artistWikidataURL: review.artistWikidataURL,
+                            artistULANURL: review.artistULANURL,
+                            metSourceId: metId
+                        )
+                    }
                     
                     reviews.append(review)
                 }

@@ -43,6 +43,7 @@ class ArtworkViewModel: ObservableObject {
         }
     }
 
+    // Then update logNewArtwork to use this information
     func logNewArtwork(_ artwork: Artwork, review: ArtReview, userId: String, completion: @escaping (Bool, String?) -> Void) {
         isSaving = true
         savingError = nil
@@ -52,9 +53,28 @@ class ArtworkViewModel: ObservableObject {
         updatedReview.imageURL = artwork.imageURL
         updatedReview.artistWikidataURL = artwork.artistWikidataURL
         
-        // Different flow based on whether it's a Met artwork or manual entry
-        if let metSourceId = artwork.metSourceId {
-            // This is a Met artwork, only save the review
+        // Check if this is a Met artwork by looking at metSourceIdForDraft
+        if let metId = metSourceIdForDraft {
+            // This is a Met artwork, save review with Met source ID
+            saveMetArtworkReview(userId: userId, metSourceId: metId, review: updatedReview) { success, error in
+                DispatchQueue.main.async {
+                    self.isSaving = false
+                    
+                    if success {
+                        // Add to local data
+                        self.artworks.append(artwork)
+                        self.reviews.append(updatedReview)
+                        self.draftArtwork = nil
+                        self.metSourceIdForDraft = nil // Clear the Met source ID
+                    } else {
+                        self.savingError = error
+                    }
+                    
+                    completion(success, error)
+                }
+            }
+        } else if let metSourceId = artwork.metSourceId {
+            // Another way to check if this is a Met artwork - if the artwork has a metSourceId
             saveMetArtworkReview(userId: userId, metSourceId: metSourceId, review: updatedReview) { success, error in
                 DispatchQueue.main.async {
                     self.isSaving = false
@@ -143,9 +163,18 @@ class ArtworkViewModel: ObservableObject {
         )
     }
     
+    
     func createDraftFromMetArtwork(_ metArtwork: MetArtwork) {
+        // Convert Met artwork to our app's Artwork model
         draftArtwork = metArtwork.toArtwork()
+        
+        // Keep track of the original Met source ID for later use when saving the review
+        // We'll need to remember this is a Met artwork
+        metSourceIdForDraft = metArtwork.id
     }
+
+    // Add this property to ArtworkViewModel
+    @Published var metSourceIdForDraft: String? = nil
     
     func clearDraft() {
         draftArtwork = nil
