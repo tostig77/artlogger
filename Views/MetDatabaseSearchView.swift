@@ -1,0 +1,164 @@
+import SwiftUI
+
+struct MetDatabaseSearchView: View {
+    @ObservedObject var viewModel: ArtworkViewModel
+    @Environment(\.presentationMode) var presentationMode
+    
+    @State private var searchQuery: String = ""
+    @State private var showingSearchResults = false
+    @State private var showingReviewForm = false
+    @State private var showingDatabaseStatus = false
+    
+    var body: some View {
+        VStack {
+            // Search bar
+            HStack {
+                TextField("Search the Met Database", text: $searchQuery)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .autocapitalization(.none)
+                    .disableAutocorrection(true)
+                    .onSubmit {
+                        performSearch()
+                    }
+                
+                Button(action: {
+                    performSearch()
+                }) {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundColor(.blue)
+                }
+                .disabled(searchQuery.isEmpty || !viewModel.metDatabaseLoaded || viewModel.isSearching)
+            }
+            .padding(.horizontal)
+            .padding(.top)
+            
+            // Database status
+            HStack {
+                Button(action: {
+                    showingDatabaseStatus = true
+                }) {
+                    Label("Database Info", systemImage: "info.circle")
+                        .font(.footnote)
+                }
+                
+                Spacer()
+                
+                if !viewModel.metDatabaseLoaded {
+                    Text("Loading database...")
+                        .font(.footnote)
+                        .foregroundColor(.gray)
+                }
+            }
+            .padding(.horizontal)
+            .padding(.top, 5)
+            
+            // Search results or placeholder
+            if viewModel.isSearching {
+                ProgressView("Searching...")
+                    .padding()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if let error = viewModel.searchError {
+                VStack {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.largeTitle)
+                        .foregroundColor(.orange)
+                        .padding()
+                    
+                    Text(error)
+                        .foregroundColor(.red)
+                        .multilineTextAlignment(.center)
+                        .padding()
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if !viewModel.searchResults.isEmpty {
+                List {
+                    ForEach(viewModel.searchResults) { artwork in
+                        Button(action: {
+                            selectArtwork(artwork)
+                            showingReviewForm = true
+                        }) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(artwork.title)
+                                    .font(.headline)
+                                
+                                if !artwork.artistDisplayName.isEmpty {
+                                    Text("by \(artwork.artistDisplayName)")
+                                        .font(.subheadline)
+                                }
+                                
+                                if !artwork.objectDate.isEmpty {
+                                    Text("Date: \(artwork.objectDate)")
+                                        .font(.caption)
+                                }
+                                
+                                if !artwork.medium.isEmpty {
+                                    Text("Medium: \(artwork.medium)")
+                                        .font(.caption)
+                                }
+                                
+                                HStack {
+                                    Text(artwork.department)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    
+                                    Spacer()
+                                    
+                                    Text("ID: \(artwork.id)")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                }
+            } else {
+                // Placeholder when no search performed
+                VStack(spacing: 20) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.largeTitle)
+                        .foregroundColor(.gray)
+                    
+                    Text("Search for an artwork in the Met database")
+                        .foregroundColor(.gray)
+                    
+                    Text("Enter a search term above and tap the search icon")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding()
+            }
+        }
+        .navigationTitle("Met Database Search")
+        .navigationBarTitleDisplayMode(.inline)
+        .alert("Met Database Status", isPresented: $showingDatabaseStatus) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            if viewModel.metDatabaseLoaded {
+                Text("The Met Database is loaded with \(MetCSVService.shared.getArtworkCount()) artworks.")
+            } else if let error = viewModel.metDatabaseLoadingError {
+                Text("Failed to load the Met Database: \(error)")
+            } else {
+                Text("The Met Database is still loading...")
+            }
+        }
+        .navigationDestination(isPresented: $showingReviewForm) {
+            ArtReviewFormView(viewModel: viewModel)
+        }
+    }
+    
+    private func performSearch() {
+        if !searchQuery.isEmpty {
+            viewModel.searchMetDatabase(query: searchQuery)
+        }
+    }
+    
+    private func selectArtwork(_ metArtwork: MetArtwork) {
+        // Create draft artwork from Met selection
+        viewModel.createDraftFromMetArtwork(metArtwork)
+    }
+}

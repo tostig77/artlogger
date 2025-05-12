@@ -7,4 +7,5 @@ struct Artwork: Identifiable, Hashable {
     var date: String
     var medium: String
     var movement: String
+    var metSourceId: String? = nil // Reference to Met database if applicable
 }

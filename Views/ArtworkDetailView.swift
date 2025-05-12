@@ -6,6 +6,14 @@
 //
 
 
+//
+//  ArtworkDetailView.swift
+//  artlogger
+//
+//  Created by Me on 5/12/25.
+//
+
+
 import SwiftUI
 
 struct ArtworkDetailView: View {
