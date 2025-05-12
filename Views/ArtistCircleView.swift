@@ -3,11 +3,18 @@ import SwiftUI
 struct ArtistCircleView: View {
     let artistUrl: String
     let count: Int
+    let providedImageURL: String?
     
-    @State private var artistName: String = "Artist"
     @State private var imageURL: String? = nil
     @State private var isLoading = true
     @State private var navigateToArtistDetail = false
+    
+    // Initialize with optional imageURL parameter
+    init(artistUrl: String, count: Int, imageURL: String? = nil) {
+        self.artistUrl = artistUrl
+        self.count = count
+        self.providedImageURL = imageURL
+    }
     
     var body: some View {
         VStack {
@@ -80,36 +87,19 @@ struct ArtistCircleView: View {
                 }
             }
             .buttonStyle(PlainButtonStyle())
-            
-            // Artist Name
-            Text(artistName)
-                .font(.caption)
-                .lineLimit(2)
-                .multilineTextAlignment(.center)
-                .frame(width: 80)
-            
-            // View Count Badge
-            Text("\(count)")
-                .font(.caption2)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 2)
-                .background(Color.blue)
-                .foregroundColor(.white)
-                .clipShape(Capsule())
         }
         .onAppear {
             // Load artist name
-            ArtistInfoService.shared.getArtistName(from: artistUrl) { name in
-                if let name = name {
-                    self.artistName = name
-                }
-                self.isLoading = false
-            }
             
-            // Try to load artist image
-            ArtistInfoService.shared.getArtistImageURL(from: artistUrl) { url in
-                print("Image URL for \(artistName): \(url ?? "nil")")
-                self.imageURL = url
+            
+            // Use provided imageURL if available, otherwise fetch it
+            if let providedImage = providedImageURL {
+                self.imageURL = providedImage
+            } else {
+                // Try to load artist image
+                ArtistInfoService.shared.getArtistImageURL(from: artistUrl) { url in
+                    self.imageURL = url
+                }
             }
         }
         .navigationDestination(isPresented: $navigateToArtistDetail) {

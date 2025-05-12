@@ -25,9 +25,8 @@ struct ProfileView: View {
                     Button(action: {
                         session.signOut()
                     }) {
-                        Text("Sign Out")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.red)
+                        Text("Sign out")
+                            .font(.system(size: 22, weight: .medium, design: .rounded))                .foregroundColor(Color("MutedGreenAccent"))
                     }
                     .padding(12)
                     
@@ -35,8 +34,12 @@ struct ProfileView: View {
                     
                     // Profile Title (Center)
                     Text("Profile")
-                        .font(.title)
-                        .bold()
+                        .font(.custom("Georgia", size: 34))
+                        .fontWeight(.bold)
+                        .foregroundColor(Color(.darkGray))
+                        .multilineTextAlignment(.center)
+                        .padding(.top)
+                        .padding(.bottom)
                     
                     Spacer()
                     
@@ -45,8 +48,8 @@ struct ProfileView: View {
                         navigateToProfileSetup = true
                     }) {
                         Image(systemName: "pencil")
-                            .font(.system(size: 18, weight: .medium))
-                            .foregroundColor(.blue)
+                            .font(.system(size: 24, weight: .bold))
+                            .foregroundColor(Color("MutedGreenAccent"))
                     }
                     .padding(12)
                 }
@@ -97,15 +100,14 @@ struct ProfileView: View {
                             VStack(alignment: .leading) {
                                 if viewModel.userProfile.username.isEmpty {
                                     Text("No username set")
-                                        .font(.headline)
-                                        .italic()
+                                        .font(.system(size: 16, weight: .medium, design: .rounded))                                    .italic()
                                 } else {
                                     Text(viewModel.userProfile.username)
-                                        .font(.headline)
+                                        .font(.system(size: 16, weight: .medium, design: .rounded))
                                 }
                                 
                                 if viewModel.userProfile.bio.isEmpty {
-                                    Text("No bio added yet.")
+                                    Text("")
                                         .font(.subheadline)
                                         .italic()
                                         .foregroundColor(.secondary)
@@ -119,7 +121,7 @@ struct ProfileView: View {
                         
                         // Top Artists Section (simplified - no "See All")
                         VStack(alignment: .leading) {
-                            Text("Top Artists")
+                            Text("Top artists")
                                 .font(.title2)
                                 .bold()
                                 .padding(.horizontal)
@@ -156,7 +158,7 @@ struct ProfileView: View {
                         
                         // Favorite artworks
                         VStack(alignment: .leading) {
-                            Text("Favorite artworks:")
+                            Text("Pinned art")
                                 .font(.title2)
                                 .bold()
                                 .padding(.horizontal)
@@ -174,7 +176,7 @@ struct ProfileView: View {
                         
                         // Most recent logs
                         VStack(alignment: .leading) {
-                            Text("Most recent logs:")
+                            Text("Logs")
                                 .font(.title2)
                                 .bold()
                                 .padding(.horizontal)

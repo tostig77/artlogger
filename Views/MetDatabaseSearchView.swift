@@ -13,7 +13,7 @@ struct MetDatabaseSearchView: View {
         VStack {
             // Search bar
             HStack {
-                TextField("Search the Met Database", text: $searchQuery)
+                TextField("Enter search term", text: $searchQuery)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
                     .autocapitalization(.none)
                     .disableAutocorrection(true)
@@ -25,7 +25,7 @@ struct MetDatabaseSearchView: View {
                     performSearch()
                 }) {
                     Image(systemName: "magnifyingglass")
-                        .foregroundColor(.blue)
+                        .foregroundColor(Color("AccentColor"))
                 }
                 .disabled(searchQuery.isEmpty || !viewModel.metDatabaseLoaded || viewModel.isSearching)
             }
@@ -37,7 +37,7 @@ struct MetDatabaseSearchView: View {
                 Button(action: {
                     showingDatabaseStatus = true
                 }) {
-                    Label("Database Info", systemImage: "info.circle")
+                    Label("Database info", systemImage: "info.circle")
                         .font(.footnote)
                 }
                 
@@ -130,30 +130,26 @@ struct MetDatabaseSearchView: View {
                         .font(.largeTitle)
                         .foregroundColor(.gray)
                     
-                    Text("Search for an artwork in the Met database")
+                    Text("Search for an artwork in our database")
                         .foregroundColor(.gray)
                     
-                    Text("Enter a search term above and tap the search icon")
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal)
+        
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .padding()
             }
         }
-        .navigationTitle("Met Database Search")
+        .navigationTitle("Database search")
         .navigationBarTitleDisplayMode(.inline)
-        .alert("Met Database Status", isPresented: $showingDatabaseStatus) {
+        .alert("Database status", isPresented: $showingDatabaseStatus) {
             Button("OK", role: .cancel) {}
         } message: {
             if viewModel.metDatabaseLoaded {
-                Text("The Met Database is loaded with \(MetCSVService.shared.getArtworkCount()) artworks.")
+                Text("Our database is loaded with \(MetCSVService.shared.getArtworkCount()) artworks.")
             } else if let error = viewModel.metDatabaseLoadingError {
-                Text("Failed to load the Met Database: \(error)")
+                Text("Failed to load database: \(error)")
             } else {
-                Text("The Met Database is still loading...")
+                Text("The database is still loading...")
             }
         }
         .navigationDestination(isPresented: $showingReviewForm) {

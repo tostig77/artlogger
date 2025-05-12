@@ -16,10 +16,13 @@ struct LogArtOptionsView: View {
     var body: some View {
         VStack(spacing: 30) {
             // Header
-            Text("Log Artwork")
-                .font(.largeTitle)
+            Text("Log art")
+                .font(.custom("Georgia", size: 34))
                 .fontWeight(.bold)
-                .padding(.top, 40)
+                .foregroundColor(Color(.darkGray))
+                .multilineTextAlignment(.center)
+                .padding(.top)
+                .padding(.bottom)
             
             Spacer()
             
@@ -33,15 +36,12 @@ struct LogArtOptionsView: View {
                         Image(systemName: "square.and.pencil")
                             .font(.system(size: 50))
                             .padding(.bottom, 10)
-                        Text("Log Manually")
+                        Text("Log manually")
                             .font(.headline)
-                        Text("Enter artwork details yourself")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
                     }
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(Color(UIColor.secondarySystemBackground))
+                    .background(Color("MutedGreenLight"))
                     .cornerRadius(15)
                 }
                 
@@ -53,15 +53,12 @@ struct LogArtOptionsView: View {
                         Image(systemName: "magnifyingglass")
                             .font(.system(size: 50))
                             .padding(.bottom, 10)
-                        Text("Search Database")
+                        Text("Search database")
                             .font(.headline)
-                        Text("Find artwork in the Met collection")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
                     }
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(Color(UIColor.secondarySystemBackground))
+                    .background(Color("MutedGreenLight"))
                     .cornerRadius(15)
                 }
             }

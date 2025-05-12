@@ -4,31 +4,46 @@ struct ContentView: View {
     @EnvironmentObject var session: SessionStore
     @StateObject private var viewModel = ArtworkViewModel()
 
+    init() {
+        let appearance = UITabBarAppearance()
+        appearance.configureWithOpaqueBackground()
+        appearance.backgroundColor = UIColor(named: "MutedGreenLight") ?? UIColor(named: "MutedGreenDark")
+
+        UITabBar.appearance().standardAppearance = appearance
+        UITabBar.appearance().scrollEdgeAppearance = appearance
+    }
+
     var body: some View {
         NavigationStack {
             TabView {
-                ProfileView().tabItem {
-                    Label("Profile", systemImage: "person.fill")
-                }
-                
+                ProfileView()
+                    .tabItem {
+                        VStack {
+                            Image(systemName: "person.fill")
+                                .font(.system(size: 32))
+                                .padding(.top, 12)
+                        }
+                    }
+
                 NavigationStack {
                     LogArtOptionsView(viewModel: viewModel)
                 }
                 .tabItem {
-                    Label("Log Art", systemImage: "plus.circle")
+                    VStack {
+                        Image(systemName: "plus.circle")
+                            .font(.system(size: 32))
+                            .padding(.top, 12)
+                    }
                 }
 
                 FriendActivityView()
                     .tabItem {
-                        Label("Friends", systemImage: "person.2.fill")
+                        VStack {
+                            Image(systemName: "person.2.fill")
+                                .font(.system(size: 32))
+                                .padding(.top, 12)
+                        }
                     }
-            }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Logout") {
-                        session.signOut()
-                    }
-                }
             }
         }
     }

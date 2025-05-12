@@ -83,7 +83,7 @@ struct ArtReviewFormView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(Color.blue)
+                    .background(Color("MutedGreenAccent"))
                     .cornerRadius(10)
                     .disabled(viewModel.isSaving)
                     .padding(.horizontal)
@@ -111,7 +111,7 @@ struct ArtReviewFormView: View {
     
     private func artworkDetailsCard(_ artwork: Artwork) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Artwork Details")
+            Text("Artwork details")
                 .font(.title3)
                 .fontWeight(.bold)
             
@@ -155,17 +155,13 @@ struct ArtReviewFormView: View {
             
             if let metId = artwork.metSourceId {
                 HStack {
-                    Text("Met Database ID: \(metId)")
+                    Text("Database ID: \(metId)")
                         .font(.caption)
                         .foregroundColor(.secondary)
                     
                     Spacer()
                     
-                    if let _ = artwork.imageURL {
-                        Text("Image from Met API")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
+                    
                 }
             }
         }
