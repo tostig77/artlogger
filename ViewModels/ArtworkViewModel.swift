@@ -1,13 +1,6 @@
-//
-//  ArtworkViewModel.swift
-//  artlogger
-//
-//  Created by Me on 5/12/25.
-//
-
-
 import Foundation
 import Firebase
+import Combine
 
 class ArtworkViewModel: ObservableObject {
     @Published var artworks: [Artwork] = sampleArtworks
@@ -28,8 +21,13 @@ class ArtworkViewModel: ObservableObject {
     @Published var metDatabaseLoaded = false
     @Published var metDatabaseLoadingError: String? = nil
     
+    // Image loading status
+    @Published var isLoadingImages = false
+    @Published var loadingImagesError: String? = nil
+    
     // Services
     private let firestoreService = FirestoreService()
+    private var cancellables = Set<AnyCancellable>()
     
     init() {
         // Load the Met database when the view model is initialized
@@ -49,17 +47,22 @@ class ArtworkViewModel: ObservableObject {
         isSaving = true
         savingError = nil
         
+        // Pass the image URL and artist Wikidata URL from artwork to review
+        var updatedReview = review
+        updatedReview.imageURL = artwork.imageURL
+        updatedReview.artistWikidataURL = artwork.artistWikidataURL
+        
         // Different flow based on whether it's a Met artwork or manual entry
         if let metSourceId = artwork.metSourceId {
             // This is a Met artwork, only save the review
-            saveMetArtworkReview(userId: userId, metSourceId: metSourceId, review: review) { success, error in
+            saveMetArtworkReview(userId: userId, metSourceId: metSourceId, review: updatedReview) { success, error in
                 DispatchQueue.main.async {
                     self.isSaving = false
                     
                     if success {
                         // Add to local data
                         self.artworks.append(artwork)
-                        self.reviews.append(review)
+                        self.reviews.append(updatedReview)
                         self.draftArtwork = nil
                     } else {
                         self.savingError = error
@@ -70,14 +73,14 @@ class ArtworkViewModel: ObservableObject {
             }
         } else {
             // This is a manually entered artwork, save both artwork and review
-            saveManualArtwork(userId: userId, artwork: artwork, review: review) { success, error in
+            saveManualArtwork(userId: userId, artwork: artwork, review: updatedReview) { success, error in
                 DispatchQueue.main.async {
                     self.isSaving = false
                     
                     if success {
                         // Add to local data
                         self.artworks.append(artwork)
-                        self.reviews.append(review)
+                        self.reviews.append(updatedReview)
                         self.draftArtwork = nil
                     } else {
                         self.savingError = error
@@ -120,25 +123,28 @@ class ArtworkViewModel: ObservableObject {
         }
     }
     
-    func createDraftArtwork(title: String, artist: String, date: String, medium: String, movement: String) {
+    func createDraftArtwork(
+        title: String,
+        artist: String,
+        date: String,
+        medium: String,
+        movement: String,
+        artistWikidataURL: String? = nil,
+        artistULANURL: String? = nil
+    ) {
         draftArtwork = Artwork(
             title: title,
             artist: artist,
             date: date,
             medium: medium,
-            movement: movement
+            movement: movement,
+            artistWikidataURL: artistWikidataURL,
+            artistULANURL: artistULANURL
         )
     }
     
     func createDraftFromMetArtwork(_ metArtwork: MetArtwork) {
-        draftArtwork = Artwork(
-            title: metArtwork.title,
-            artist: metArtwork.artistDisplayName,
-            date: metArtwork.objectDate,
-            medium: metArtwork.medium,
-            movement: "",  // We're not using movement for Met artworks
-            metSourceId: metArtwork.id
-        )
+        draftArtwork = metArtwork.toArtwork()
     }
     
     func clearDraft() {
@@ -183,11 +189,39 @@ class ArtworkViewModel: ObservableObject {
     private func performSearch(query: String) {
         let results = MetCSVService.shared.searchArtworks(query: query)
         
-        DispatchQueue.main.async {
-            self.searchResults = results
+        if results.isEmpty {
+            DispatchQueue.main.async {
+                self.searchResults = []
+                self.isSearching = false
+                self.searchError = "No artworks found matching '\(query)'"
+            }
+            return
+        }
+        
+        // Fetch image URLs for each artwork (limit to first 20 results to avoid too many API calls)
+        let limitedResults = Array(results.prefix(20))
+        var enrichedResults: [MetArtwork] = []
+        let group = DispatchGroup()
+        
+        for artwork in limitedResults {
+            group.enter()
+            MetAPIService.shared.enrichMetArtwork(artwork) { result in
+                switch result {
+                case .success(let enrichedArtwork):
+                    enrichedResults.append(enrichedArtwork)
+                case .failure:
+                    // If we can't get the image, still add the original artwork
+                    enrichedResults.append(artwork)
+                }
+                group.leave()
+            }
+        }
+        
+        group.notify(queue: .main) {
+            self.searchResults = enrichedResults
             self.isSearching = false
             
-            if results.isEmpty {
+            if enrichedResults.isEmpty {
                 self.searchError = "No artworks found matching '\(query)'"
             }
         }

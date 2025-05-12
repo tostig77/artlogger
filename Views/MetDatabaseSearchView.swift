@@ -77,38 +77,48 @@ struct MetDatabaseSearchView: View {
                             selectArtwork(artwork)
                             showingReviewForm = true
                         }) {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(artwork.title)
-                                    .font(.headline)
+                            HStack(spacing: 12) {
+                                // Artwork thumbnail
+                                ArtworkThumbnailImage(urlString: artwork.primaryImageSmall, size: 60)
                                 
-                                if !artwork.artistDisplayName.isEmpty {
-                                    Text("by \(artwork.artistDisplayName)")
-                                        .font(.subheadline)
-                                }
-                                
-                                if !artwork.objectDate.isEmpty {
-                                    Text("Date: \(artwork.objectDate)")
-                                        .font(.caption)
-                                }
-                                
-                                if !artwork.medium.isEmpty {
-                                    Text("Medium: \(artwork.medium)")
-                                        .font(.caption)
-                                }
-                                
-                                HStack {
-                                    Text(artwork.department)
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
+                                // Artwork details
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(artwork.title)
+                                        .font(.headline)
+                                        .lineLimit(2)
                                     
-                                    Spacer()
+                                    if !artwork.artistDisplayName.isEmpty {
+                                        Text("by \(artwork.artistDisplayName)")
+                                            .font(.subheadline)
+                                            .lineLimit(1)
+                                    }
                                     
-                                    Text("ID: \(artwork.id)")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
+                                    if !artwork.objectDate.isEmpty {
+                                        Text("Date: \(artwork.objectDate)")
+                                            .font(.caption)
+                                    }
+                                    
+                                    if !artwork.medium.isEmpty {
+                                        Text("Medium: \(artwork.medium)")
+                                            .font(.caption)
+                                            .lineLimit(1)
+                                    }
+                                    
+                                    HStack {
+                                        Text(artwork.department)
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                        
+                                        Spacer()
+                                        
+                                        Text("ID: \(artwork.id)")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    .padding(.top, 2)
                                 }
                             }
-                            .padding(.vertical, 4)
+                            .padding(.vertical, 8)
                         }
                         .buttonStyle(PlainButtonStyle())
                     }

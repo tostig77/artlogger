@@ -8,4 +8,7 @@ struct Artwork: Identifiable, Hashable {
     var medium: String
     var movement: String
     var metSourceId: String? = nil // Reference to Met database if applicable
+    var imageURL: String? = nil // URL for artwork image
+    var artistWikidataURL: String? = nil // Artist's Wikidata URL
+    var artistULANURL: String? = nil // Artist's ULAN URL
 }

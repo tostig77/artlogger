@@ -1,11 +1,3 @@
-//
-//  ArtDetailsFormView.swift
-//  artlogger
-//
-//  Created by Me on 5/12/25.
-//
-
-
 import SwiftUI
 
 struct ArtDetailsFormView: View {
@@ -19,13 +11,22 @@ struct ArtDetailsFormView: View {
     @State private var movement: String = ""
     
     @State private var showingReviewForm = false
+    @State private var isLookingUpArtist = false
     
     var body: some View {
         VStack {
             Form {
                 Section(header: Text("Artwork Details")) {
                     TextField("Title *", text: $title)
-                    TextField("Artist *", text: $artist)
+                    
+                    HStack {
+                        TextField("Artist *", text: $artist)
+                        if isLookingUpArtist {
+                            ProgressView()
+                                .frame(width: 20, height: 20)
+                        }
+                    }
+                    
                     TextField("Date", text: $date)
                     TextField("Medium", text: $medium)
                     TextField("Movement", text: $movement)
@@ -33,20 +34,11 @@ struct ArtDetailsFormView: View {
                 
                 Section(footer: requiredFieldsNote) {
                     Button("Next") {
-                        // Create draft artwork
-                        viewModel.createDraftArtwork(
-                            title: title,
-                            artist: artist,
-                            date: date,
-                            medium: medium,
-                            movement: movement
-                        )
-                        
-                        // Navigate to review form
-                        showingReviewForm = true
+                        // First try to identify the artist
+                        lookupArtistAndCreateDraft()
                     }
                     .frame(maxWidth: .infinity, alignment: .center)
-                    .disabled(!isFormValid)
+                    .disabled(!isFormValid || isLookingUpArtist)
                 }
             }
         }
@@ -65,5 +57,27 @@ struct ArtDetailsFormView: View {
         Text("* Required fields")
             .font(.caption)
             .foregroundColor(.secondary)
+    }
+    
+    private func lookupArtistAndCreateDraft() {
+        isLookingUpArtist = true
+        
+        // Try to lookup artist information
+        ArtistIdentificationService.shared.lookupArtistURLs(artistName: artist) { wikidataURL, ulanURL in
+            // Create draft artwork with any found URLs
+            viewModel.createDraftArtwork(
+                title: title,
+                artist: artist,
+                date: date,
+                medium: medium,
+                movement: movement,
+                artistWikidataURL: wikidataURL,
+                artistULANURL: ulanURL
+            )
+            
+            // Navigate to review form
+            isLookingUpArtist = false
+            showingReviewForm = true
+        }
     }
 }

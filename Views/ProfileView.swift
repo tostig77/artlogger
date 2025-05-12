@@ -11,41 +11,6 @@ struct UserProfile {
     static let empty = UserProfile(username: "", bio: "")
 }
 
-// View Model for Profile
-class ProfileViewModel: ObservableObject {
-    @Published var userProfile = UserProfile.empty
-    @Published var isLoading = false
-    @Published var errorMessage: String?
-    
-    func fetchUserProfile(userId: String) {
-        isLoading = true
-        errorMessage = nil
-        
-        let db = Firestore.firestore()
-        db.collection("users").document(userId).getDocument { [weak self] snapshot, error in
-            DispatchQueue.main.async {
-                self?.isLoading = false
-                
-                if let error = error {
-                    self?.errorMessage = "Failed to load profile: \(error.localizedDescription)"
-                    return
-                }
-                
-                guard let data = snapshot?.data() else {
-                    self?.errorMessage = "No profile data found"
-                    return
-                }
-                
-                // Extract profile data
-                let username = data["username"] as? String ?? ""
-                let bio = data["bio"] as? String ?? ""
-                
-                self?.userProfile = UserProfile(username: username, bio: bio)
-            }
-        }
-    }
-}
-
 struct ProfileView: View {
     @EnvironmentObject var session: SessionStore
     @StateObject private var viewModel = ProfileViewModel()
@@ -152,22 +117,42 @@ struct ProfileView: View {
                         }
                         .padding(.horizontal)
                         
-                        // Favorite artists
+                        // Top Artists Section (simplified - no "See All")
                         VStack(alignment: .leading) {
-                            Text("Favorite artists:")
+                            Text("Top Artists")
                                 .font(.title2)
                                 .bold()
                                 .padding(.horizontal)
                             
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 15) {
-                                    ForEach(["Artist 1", "Artist 2", "Artist 3"], id: \.self) { artist in
-                                        ArtistThumbnail(artistName: artist)
-                                    }
+                            if viewModel.isLoadingArtists {
+                                HStack {
+                                    Spacer()
+                                    ProgressView()
+                                        .padding()
+                                    Spacer()
                                 }
-                                .padding(.horizontal)
+                            } else if viewModel.topArtists.isEmpty {
+                                Text("No artist data available yet")
+                                    .foregroundColor(.secondary)
+                                    .padding()
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                            } else {
+                                // Horizontal scrolling artist circles
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 16) {
+                                        ForEach(viewModel.topArtists, id: \.url) { artist in
+                                            ArtistCircleView(
+                                                artistUrl: artist.url,
+                                                count: artist.count
+                                            )
+                                        }
+                                    }
+                                    .padding(.horizontal)
+                                    .padding(.vertical, 8)
+                                }
                             }
                         }
+                        .padding(.top)
                         
                         // Favorite artworks
                         VStack(alignment: .leading) {
@@ -185,6 +170,7 @@ struct ProfileView: View {
                                 .padding(.horizontal)
                             }
                         }
+                        .padding(.top)
                         
                         // Most recent logs
                         VStack(alignment: .leading) {
@@ -202,15 +188,17 @@ struct ProfileView: View {
                                 .padding(.horizontal)
                             }
                         }
+                        .padding(.top)
                     }
                 }
-                .padding(.vertical)
+                .padding(.bottom)
             }
         }
         .navigationBarHidden(true)
         .onAppear {
             if let userId = session.user?.uid {
                 viewModel.fetchUserProfile(userId: userId)
+                viewModel.fetchTopArtists(userId: userId)
             }
         }
         .sheet(isPresented: $navigateToProfileSetup) {
@@ -229,23 +217,7 @@ struct ProfileView: View {
     }
 }
 
-// These structures remain the same
-struct ArtistThumbnail: View {
-    var artistName: String
-    
-    var body: some View {
-        VStack {
-            Image(systemName: "paintbrush")
-                .resizable()
-                .frame(width: 50, height: 50)
-                .clipShape(Circle())
-            Text(artistName)
-                .font(.footnote)
-                .frame(maxWidth: 70)
-        }
-    }
-}
-
+// Keep these structures unchanged
 struct ArtworkThumbnail: View {
     var artwork: String
     

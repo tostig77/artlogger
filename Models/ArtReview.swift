@@ -6,4 +6,7 @@ struct ArtReview: Identifiable {
     var dateViewed: Date
     var location: String
     var reviewText: String
+    var imageURL: String? = nil
+    var artistWikidataURL: String? = nil
+    var artistULANURL: String? = nil
 }

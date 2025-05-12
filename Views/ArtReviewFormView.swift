@@ -110,12 +110,31 @@ struct ArtReviewFormView: View {
     }
     
     private func artworkDetailsCard(_ artwork: Artwork) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
             Text("Artwork Details")
                 .font(.title3)
                 .fontWeight(.bold)
             
             Divider()
+            
+            // Artwork image if available
+            if let imageURL = artwork.imageURL, !imageURL.isEmpty {
+                AsyncArtworkImage(urlString: imageURL) {
+                    ZStack {
+                        Color.gray.opacity(0.2)
+                        VStack {
+                            Image(systemName: "photo")
+                                .font(.system(size: 30))
+                            Text("Loading image...")
+                                .font(.caption)
+                        }
+                    }
+                }
+                .aspectRatio(contentMode: .fit)
+                .frame(maxHeight: 300)
+                .cornerRadius(8)
+                .padding(.bottom, 8)
+            }
             
             Text("Title: \(artwork.title)")
                 .font(.headline)
@@ -135,9 +154,19 @@ struct ArtReviewFormView: View {
             }
             
             if let metId = artwork.metSourceId {
-                Text("Met Database ID: \(metId)")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                HStack {
+                    Text("Met Database ID: \(metId)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    Spacer()
+                    
+                    if let _ = artwork.imageURL {
+                        Text("Image from Met API")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
             }
         }
         .padding()
@@ -153,12 +182,15 @@ struct ArtReviewFormView: View {
             return
         }
         
-        // Create review
+        // Create review with artist URLs
         let review = ArtReview(
             artworkId: artwork.id,
             dateViewed: dateViewed,
             location: location,
-            reviewText: reviewText
+            reviewText: reviewText,
+            imageURL: artwork.imageURL,
+            artistWikidataURL: artwork.artistWikidataURL,
+            artistULANURL: artwork.artistULANURL
         )
         
         // Log the artwork with review

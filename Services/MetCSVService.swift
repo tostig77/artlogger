@@ -1,11 +1,3 @@
-//
-//  MetCSVService.swift
-//  artlogger
-//
-//  Created by Me on 5/12/25.
-//
-
-
 import Foundation
 
 class MetCSVService {
@@ -59,57 +51,68 @@ class MetCSVService {
             if line.isEmpty { continue }
             
             // Parse the CSV line
-            // Note: This is a simplistic approach. For production, use a more robust CSV parser
             let fields = parseCSVLine(line)
             
-            // Skip if we don't have enough fields
-            guard fields.count >= 42 else { continue }
+            // Skip if we don't have enough fields (should have at least 53 fields)
+            guard fields.count >= 53 else { continue }
             
             // Create a MetArtwork from the parsed fields
+            // Field indices are based on the new CSV structure
             let artwork = MetArtwork(
-                id: fields[3],
-                objectNumber: fields[0],
-                isHighlight: fields[1].lowercased() == "true",
-                isPublicDomain: fields[2].lowercased() == "true",
-                department: fields[4],
-                objectName: fields[5],
-                title: fields[6],
-                culture: fields[7],
-                period: fields[8],
-                dynasty: fields[9],
-                reign: fields[10],
-                portfolio: fields[11],
-                artistRole: fields[12],
-                artistPrefix: fields[13],
-                artistDisplayName: fields[14],
-                artistDisplayBio: fields[15],
-                artistSuffix: fields[16],
-                artistAlphaSort: fields[17],
-                artistNationality: fields[18],
-                artistBeginDate: fields[19],
-                artistEndDate: fields[20],
-                objectDate: fields[21],
-                objectBeginDate: fields[22],
-                objectEndDate: fields[23],
-                medium: fields[24],
-                dimensions: fields[25],
-                creditLine: fields[26],
-                geographyType: fields[27],
-                city: fields[28],
-                state: fields[29],
-                county: fields[30],
-                country: fields[31],
-                region: fields[32],
-                subregion: fields[33],
-                locale: fields[34],
-                locus: fields[35],
-                excavation: fields[36],
-                river: fields[37],
-                classification: fields[38],
-                rightsAndReproduction: fields[39],
-                linkResource: fields[40],
-                metadataDate: fields[41],
-                repository: fields.count > 42 ? fields[42] : ""
+                id: fields[4],                                      // Object ID (index 4)
+                objectNumber: fields[0],                            // Object Number (index 0)
+                isHighlight: fields[1].lowercased() == "true",      // Is Highlight (index 1)
+                isTimelineWork: fields[2].lowercased() == "true",   // Is Timeline Work (index 2)
+                isPublicDomain: fields[3].lowercased() == "true",   // Is Public Domain (index 3)
+                galleryNumber: fields[5],                           // Gallery Number (index 5)
+                department: fields[6],                              // Department (index 6)
+                accessionYear: fields[7],                           // Accession Year (index 7)
+                objectName: fields[8],                              // Object Name (index 8)
+                title: fields[9],                                   // Title (index 9)
+                culture: fields[10],                                // Culture (index 10)
+                period: fields[11],                                 // Period (index 11)
+                dynasty: fields[12],                                // Dynasty (index 12)
+                reign: fields[13],                                  // Reign (index 13)
+                portfolio: fields[14],                              // Portfolio (index 14)
+                constituentID: fields[15],                          // Constituent ID (index 15)
+                artistRole: fields[16],                             // Artist Role (index 16)
+                artistPrefix: fields[17],                           // Artist Prefix (index 17)
+                artistDisplayName: fields[18],                      // Artist Display Name (index 18)
+                artistDisplayBio: fields[19],                       // Artist Display Bio (index 19)
+                artistSuffix: fields[20],                           // Artist Suffix (index 20)
+                artistAlphaSort: fields[21],                        // Artist Alpha Sort (index 21)
+                artistNationality: fields[22],                      // Artist Nationality (index 22)
+                artistBeginDate: fields[23],                        // Artist Begin Date (index 23)
+                artistEndDate: fields[24],                          // Artist End Date (index 24)
+                artistGender: fields[25],                           // Artist Gender (index 25)
+                artistULANURL: fields[26],                          // Artist ULAN URL (index 26)
+                artistWikidataURL: fields[27],                      // Artist Wikidata URL (index 27)
+                objectDate: fields[28],                             // Object Date (index 28)
+                objectBeginDate: fields[29],                        // Object Begin Date (index 29)
+                objectEndDate: fields[30],                          // Object End Date (index 30)
+                medium: fields[31],                                 // Medium (index 31)
+                dimensions: fields[32],                             // Dimensions (index 32)
+                creditLine: fields[33],                             // Credit Line (index 33)
+                geographyType: fields[34],                          // Geography Type (index 34)
+                city: fields[35],                                   // City (index 35)
+                state: fields[36],                                  // State (index 36)
+                county: fields[37],                                 // County (index 37)
+                country: fields[38],                                // Country (index 38)
+                region: fields[39],                                 // Region (index 39)
+                subregion: fields[40],                              // Subregion (index 40)
+                locale: fields[41],                                 // Locale (index 41)
+                locus: fields[42],                                  // Locus (index 42)
+                excavation: fields[43],                             // Excavation (index 43)
+                river: fields[44],                                  // River (index 44)
+                classification: fields[45],                         // Classification (index 45)
+                rightsAndReproduction: fields[46],                  // Rights and Reproduction (index 46)
+                linkResource: fields[47],                           // Link Resource (index 47)
+                objectWikidataURL: fields[48],                      // Object Wikidata URL (index 48)
+                metadataDate: fields[49],                           // Metadata Date (index 49)
+                repository: fields[50],                             // Repository (index 50)
+                tags: fields[51],                                   // Tags (index 51)
+                tagsAATURL: fields[52],                             // Tags AAT URL (index 52)
+                tagsWikidataURL: fields.count > 53 ? fields[53] : "" // Tags Wikidata URL (index 53)
             )
             
             artworks.append(artwork)
@@ -151,7 +154,9 @@ class MetCSVService {
             artwork.title.lowercased().contains(normalizedQuery) ||
             artwork.artistDisplayName.lowercased().contains(normalizedQuery) ||
             artwork.objectName.lowercased().contains(normalizedQuery) ||
-            artwork.department.lowercased().contains(normalizedQuery)
+            artwork.department.lowercased().contains(normalizedQuery) ||
+            artwork.classification.lowercased().contains(normalizedQuery) ||
+            artwork.tags.lowercased().contains(normalizedQuery)  // Added tags to search
         }
     }
     
