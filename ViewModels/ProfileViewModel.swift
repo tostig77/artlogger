@@ -7,7 +7,7 @@ class ProfileViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
 
-    @Published var topArtists: [(url: String, count: Int)] = []
+    @Published var topArtists: [(url: String, count: Int, imageURL: String?)] = []
     @Published var isLoadingArtists = false
 
     @Published var userReviews: [ArtReview] = []
@@ -42,33 +42,52 @@ class ProfileViewModel: ObservableObject {
 
     func fetchTopArtists(userId: String) {
         isLoadingArtists = true
+        print("Fetching top artists for user: \(userId)")
 
         let db = Firestore.firestore()
         let artistsRef = db.collection("artists").document(userId)
 
         artistsRef.getDocument { [weak self] document, error in
+            if let error = error {
+                print("Error fetching artists: \(error.localizedDescription)")
+                DispatchQueue.main.async {
+                    self?.isLoadingArtists = false
+                }
+                return
+            }
+
+            guard let document = document, document.exists, let data = document.data() else {
+                print("No artist document found or it's empty")
+                DispatchQueue.main.async {
+                    self?.isLoadingArtists = false
+                    self?.topArtists = []
+                }
+                return
+            }
+
+            print("Retrieved artist document with data: \(data)")
+            var artistCounts: [(url: String, count: Int, imageURL: String?)] = []
+
+            for (url, value) in data {
+                if let artistInfo = value as? [String: Any] {
+                    // Extract count and imageURL
+                    let count = artistInfo["count"] as? Int ?? 0
+                    let imageURL = artistInfo["imageURL"] as? String
+                    print("Artist \(url): count=\(count), imageURL=\(imageURL ?? "nil")")
+                    artistCounts.append((url: url, count: count, imageURL: imageURL))
+                } else if let count = value as? Int {
+                    // Legacy format - no image URL
+                    print("Artist \(url): count=\(count) (legacy format, no image URL)")
+                    artistCounts.append((url: url, count: count, imageURL: nil))
+                }
+            }
+
+            let sortedArtists = artistCounts.sorted { $0.count > $1.count }
+            print("Sorted artists (top 5): \(sortedArtists.prefix(5))")
+            
             DispatchQueue.main.async {
-                self?.isLoadingArtists = false
-
-                if let error = error {
-                    print("Error fetching artists: \(error.localizedDescription)")
-                    return
-                }
-
-                guard let document = document, document.exists, let data = document.data() else {
-                    return
-                }
-
-                var artistCounts: [(url: String, count: Int)] = []
-
-                for (url, value) in data {
-                    if let count = value as? Int {
-                        artistCounts.append((url: url, count: count))
-                    }
-                }
-
-                let sortedArtists = artistCounts.sorted { $0.count > $1.count }
                 self?.topArtists = Array(sortedArtists.prefix(5))
+                self?.isLoadingArtists = false
             }
         }
     }

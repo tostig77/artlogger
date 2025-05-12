@@ -223,136 +223,155 @@ class FirestoreService {
     
     /// Increment the count for an artist in the user's artist tracking document
     /// Increment the count for an artist in the user's artist tracking document
-    func incrementArtistCount(userId: String, artistWikidataURL: String, completion: @escaping (Error?) -> Void) {
-        // Skip if no Wikidata URL
-        guard !artistWikidataURL.isEmpty else {
-            completion(nil)
-            return
+    /// Increment the count for an artist in the user's artist tracking document
+        func incrementArtistCount(userId: String, artistWikidataURL: String, completion: @escaping (Error?) -> Void) {
+            // Skip if no Wikidata URL
+            guard !artistWikidataURL.isEmpty else {
+                completion(nil)
+                return
+            }
+            
+            // Print debug info
+            print("Incrementing artist count for URL: \(artistWikidataURL)")
+            
+            // First, get the artist's image URL
+            ArtistInfoService.shared.getArtistImageURL(from: artistWikidataURL) { [weak self] imageURL in
+                guard let self = self else { return }
+                
+                // Debug print the image URL
+                print("Retrieved image URL: \(imageURL ?? "nil")")
+                
+                // Reference to the user's artist document
+                let userArtistDocRef = self.db.collection("artists").document(userId)
+                
+                // First get the current document
+                userArtistDocRef.getDocument { documentSnapshot, error in
+                    if let error = error {
+                        print("Error fetching artist document: \(error.localizedDescription)")
+                        completion(error)
+                        return
+                    }
+                    
+                    // Prepare the artist data
+                    var artistData: [String: Any] = documentSnapshot?.data() ?? [:]
+                    
+                    // Extract or create artist info
+                    var artistInfo: [String: Any] = [:]
+                    
+                    if let existingInfo = artistData[artistWikidataURL] as? [String: Any] {
+                        artistInfo = existingInfo
+                        let currentCount = artistInfo["count"] as? Int ?? 0
+                        artistInfo["count"] = currentCount + 1
+                        
+                        // Keep existing image URL if present
+                        if let existingImageURL = artistInfo["imageURL"] as? String, !existingImageURL.isEmpty {
+                            print("Using existing image URL: \(existingImageURL)")
+                        } else if let newImageURL = imageURL, !newImageURL.isEmpty {
+                            // Otherwise set the new image URL
+                            print("Setting new image URL: \(newImageURL)")
+                            artistInfo["imageURL"] = newImageURL
+                        }
+                    } else {
+                        // Create new artist info
+                        artistInfo["count"] = 1
+                        if let newImageURL = imageURL, !newImageURL.isEmpty {
+                            print("Setting initial image URL: \(newImageURL)")
+                            artistInfo["imageURL"] = newImageURL
+                        }
+                    }
+                    
+                    // Update the document with the new artist info
+                    artistData[artistWikidataURL] = artistInfo
+                    
+                    // Print what we're saving
+                    print("Saving artist data: \(artistInfo)")
+                    
+                    // Use setData with merge to update the document
+                    userArtistDocRef.setData(artistData, merge: true) { error in
+                        if let error = error {
+                            print("Error updating artist document: \(error.localizedDescription)")
+                        } else {
+                            print("Successfully updated artist count and image URL")
+                        }
+                        completion(error)
+                    }
+                }
+            }
         }
         
-        // First, get the artist's image URL
-        ArtistInfoService.shared.getArtistImageURL(from: artistWikidataURL) { imageURL in
-            // Reference to the user's artist document
-            let userArtistDocRef = self.db.collection("artists").document(userId)
+        /// Get the user's artist counts
+        func getArtistCounts(userId: String, completion: @escaping (Result<[String: [String: Any]], Error>) -> Void) {
+            let artistsDocRef = db.collection("artists").document(userId)
             
-            // Use a transaction to safely update the artist data
-            self.db.runTransaction({ (transaction, errorPointer) -> Any? in
-                let documentSnapshot: DocumentSnapshot
-                do {
-                    try documentSnapshot = transaction.getDocument(userArtistDocRef)
-                } catch let fetchError as NSError {
-                    errorPointer?.pointee = fetchError
-                    return nil
+            artistsDocRef.getDocument { document, error in
+                if let error = error {
+                    completion(.failure(error))
+                    return
                 }
                 
-                // Get the current artist data or create a new empty map
-                var artistData: [String: Any] = documentSnapshot.exists ?
-                    (documentSnapshot.data() ?? [:]) : [:]
+                guard let document = document, document.exists else {
+                    // No document found - return empty dictionary
+                    completion(.success([:]))
+                    return
+                }
                 
-                // Check if we already have data for this artist
-                var artistInfo: [String: Any] = [:]
-                if let existingInfo = artistData[artistWikidataURL] as? [String: Any] {
-                    artistInfo = existingInfo
-                    
-                    // Update the count
-                    let currentCount = artistInfo["count"] as? Int ?? 0
-                    artistInfo["count"] = currentCount + 1
-                    
-                    // Only overwrite imageURL if it's not already set or if we have a new one
-                    if imageURL != nil && (artistInfo["imageURL"] == nil || artistInfo["imageURL"] as? String == nil) {
-                        artistInfo["imageURL"] = imageURL
-                    }
-                } else {
-                    // Create new artist info
-                    artistInfo["count"] = 1
-                    if let imageURL = imageURL {
-                        artistInfo["imageURL"] = imageURL
+                guard let data = document.data() else {
+                    completion(.success([:]))
+                    return
+                }
+                
+                // Convert to dictionary with artist info
+                var artistData: [String: [String: Any]] = [:]
+                for (url, value) in data {
+                    if let artistInfo = value as? [String: Any] {
+                        artistData[url] = artistInfo
+                    } else if let count = value as? Int {
+                        // Handle legacy data format for backward compatibility
+                        artistData[url] = ["count": count]
                     }
                 }
                 
-                // Update the document with the new artist info
-                artistData[artistWikidataURL] = artistInfo
-                
-                // Update the document
-                transaction.setData(artistData, forDocument: userArtistDocRef)
-                
-                return nil
-            }) { (_, error) in
-                completion(error)
+                completion(.success(artistData))
             }
         }
-    }
-    
-    /// Get the user's artist counts
-    func getArtistCounts(userId: String, completion: @escaping (Result<[String: [String: Any]], Error>) -> Void) {
-        let artistsDocRef = db.collection("artists").document(userId)
-        
-        artistsDocRef.getDocument { document, error in
-            if let error = error {
-                completion(.failure(error))
-                return
-            }
-            
-            guard let document = document, document.exists else {
-                // No document found - return empty dictionary
-                completion(.success([:]))
-                return
-            }
-            
-            guard let data = document.data() else {
-                completion(.success([:]))
-                return
-            }
-            
-            // Convert to dictionary with artist info
-            var artistData: [String: [String: Any]] = [:]
-            for (url, value) in data {
-                if let artistInfo = value as? [String: Any] {
-                    artistData[url] = artistInfo
-                } else if let count = value as? Int {
-                    // Handle legacy data format for backward compatibility
-                    artistData[url] = ["count": count]
-                }
-            }
-            
-            completion(.success(artistData))
-        }
-    }
 
-    /// Get top artists for a user
-    func getTopArtists(userId: String, limit: Int = 5, completion: @escaping (Result<[(url: String, count: Int, imageURL: String?)], Error>) -> Void) {
-        getArtistCounts(userId: userId) { result in
-            switch result {
-            case .success(let artistsData):
-                // Convert to array with extracted count values for sorting
-                var artistsArray: [(url: String, info: [String: Any])] = []
-                
-                for (url, info) in artistsData {
-                    artistsArray.append((url: url, info: info))
+        /// Get top artists for a user
+        func getTopArtists(userId: String, limit: Int = 5, completion: @escaping (Result<[(url: String, count: Int, imageURL: String?)], Error>) -> Void) {
+            getArtistCounts(userId: userId) { result in
+                switch result {
+                case .success(let artistsData):
+                    // Convert to array with extracted count values for sorting
+                    var artistsArray: [(url: String, info: [String: Any])] = []
+                    
+                    for (url, info) in artistsData {
+                        artistsArray.append((url: url, info: info))
+                    }
+                    
+                    // Sort by count (descending) and take the top n
+                    let sortedArtists = artistsArray.sorted {
+                        let count1 = ($0.info["count"] as? Int) ?? 0
+                        let count2 = ($1.info["count"] as? Int) ?? 0
+                        return count1 > count2
+                    }
+                    
+                    let topArtists = sortedArtists.prefix(limit).map { artist in
+                        let imageURL = artist.info["imageURL"] as? String
+                        print("Top artist URL: \(artist.url), count: \(artist.info["count"] as? Int ?? 0), imageURL: \(imageURL ?? "nil")")
+                        
+                        return (
+                            url: artist.url,
+                            count: (artist.info["count"] as? Int) ?? 0,
+                            imageURL: imageURL
+                        )
+                    }
+                    
+                    completion(.success(Array(topArtists)))
+                    
+                case .failure(let error):
+                    completion(.failure(error))
                 }
-                
-                // Sort by count (descending) and take the top n
-                let sortedArtists = artistsArray.sorted {
-                    let count1 = ($0.info["count"] as? Int) ?? 0
-                    let count2 = ($1.info["count"] as? Int) ?? 0
-                    return count1 > count2
-                }
-                
-                let topArtists = sortedArtists.prefix(limit).map { artist in
-                    (
-                        url: artist.url,
-                        count: (artist.info["count"] as? Int) ?? 0,
-                        imageURL: artist.info["imageURL"] as? String
-                    )
-                }
-                
-                completion(.success(Array(topArtists)))
-            case .failure(let error):
-                completion(.failure(error))
             }
         }
-    }
-    
     
     
     
