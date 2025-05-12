@@ -44,101 +44,47 @@ class ProfileViewModel: ObservableObject {
         isLoadingArtists = true
         print("Fetching top artists for user: \(userId)")
 
-        let db = Firestore.firestore()
-        let artistsRef = db.collection("artists").document(userId)
-
-        artistsRef.getDocument { [weak self] document, error in
-            if let error = error {
-                print("Error fetching artists: \(error.localizedDescription)")
-                DispatchQueue.main.async {
-                    self?.isLoadingArtists = false
-                }
-                return
-            }
-
-            guard let document = document, document.exists, let data = document.data() else {
-                print("No artist document found or it's empty")
-                DispatchQueue.main.async {
-                    self?.isLoadingArtists = false
+        let firestoreService = FirestoreService()
+        firestoreService.getTopArtists(userId: userId, limit: 5) { [weak self] result in
+            DispatchQueue.main.async {
+                self?.isLoadingArtists = false
+                
+                switch result {
+                case .success(let artists):
+                    self?.topArtists = artists
+                case .failure(let error):
+                    print("Error fetching top artists: \(error.localizedDescription)")
                     self?.topArtists = []
                 }
-                return
-            }
-
-            print("Retrieved artist document with data: \(data)")
-            var artistCounts: [(url: String, count: Int, imageURL: String?)] = []
-
-            for (url, value) in data {
-                if let artistInfo = value as? [String: Any] {
-                    // Extract count and imageURL
-                    let count = artistInfo["count"] as? Int ?? 0
-                    let imageURL = artistInfo["imageURL"] as? String
-                    print("Artist \(url): count=\(count), imageURL=\(imageURL ?? "nil")")
-                    artistCounts.append((url: url, count: count, imageURL: imageURL))
-                } else if let count = value as? Int {
-                    // Legacy format - no image URL
-                    print("Artist \(url): count=\(count) (legacy format, no image URL)")
-                    artistCounts.append((url: url, count: count, imageURL: nil))
-                }
-            }
-
-            let sortedArtists = artistCounts.sorted { $0.count > $1.count }
-            print("Sorted artists (top 5): \(sortedArtists.prefix(5))")
-            
-            DispatchQueue.main.async {
-                self?.topArtists = Array(sortedArtists.prefix(5))
-                self?.isLoadingArtists = false
             }
         }
     }
 
     func fetchUserReviews(userId: String) {
         isLoadingReviews = true
-        errorMessage = nil
-
-        let db = Firestore.firestore()
-        db.collection("reviews")
-            .whereField("userId", isEqualTo: userId)
-            .getDocuments { [weak self] snapshot, error in
-                DispatchQueue.main.async {
-                    self?.isLoadingReviews = false
-
-                    if let error = error {
-                        self?.errorMessage = "Error loading reviews: \(error.localizedDescription)"
-                        return
+        print("Fetching reviews for user: \(userId)")
+        
+        let firestoreService = FirestoreService()
+        firestoreService.getUserReviews(userId: userId) { [weak self] result in
+            DispatchQueue.main.async {
+                self?.isLoadingReviews = false
+                
+                switch result {
+                case .success(let reviews):
+                    // Sort reviews by date (most recent first)
+                    let sortedReviews = reviews.sorted {
+                        $0.dateViewed > $1.dateViewed
                     }
-
-                    guard let documents = snapshot?.documents else {
-                        self?.userReviews = []
-                        return
-                    }
-
-                    let reviews: [ArtReview] = documents.compactMap { doc in
-                        let data = doc.data()
-
-                        guard
-                            let artworkIdStr = data["artworkId"] as? String,
-                            let artworkId = UUID(uuidString: artworkIdStr),
-                            let timestamp = data["dateViewed"] as? Timestamp,
-                            let location = data["location"] as? String,
-                            let reviewText = data["reviewText"] as? String
-                        else {
-                            return nil
-                        }
-
-                        return ArtReview(
-                            artworkId: artworkId,
-                            dateViewed: timestamp.dateValue(),
-                            location: location,
-                            reviewText: reviewText,
-                            imageURL: data["imageURL"] as? String,
-                            artistWikidataURL: data["artistWikidataURL"] as? String,
-                            artistULANURL: data["artistULANURL"] as? String
-                        )
-                    }
-
-                    self?.userReviews = reviews
+                    
+                    self?.userReviews = sortedReviews
+                    print("Fetched \(sortedReviews.count) reviews")
+                    
+                case .failure(let error):
+                    print("Error fetching reviews: \(error.localizedDescription)")
+                    self?.errorMessage = "Failed to load reviews: \(error.localizedDescription)"
+                    self?.userReviews = []
                 }
             }
+        }
     }
 }

@@ -16,6 +16,7 @@ struct ProfileView: View {
     @StateObject private var viewModel = ProfileViewModel()
     @State private var navigateToProfileSetup = false
     @State private var selectedArtistUrl: String? = nil
+    @State private var selectedReview: ArtReview? = nil
     @State private var artistImages: [String: String] = [:] // Cache for artist images: [url: imageUrl]
     
     var body: some View {
@@ -143,7 +144,7 @@ struct ProfileView: View {
                                     .padding()
                                     .frame(maxWidth: .infinity, alignment: .center)
                             } else {
-                                // Horizontal scrolling artist circles - direct implementation
+                                // Horizontal scrolling artist circles
                                 ScrollView(.horizontal, showsIndicators: false) {
                                     HStack(spacing: 16) {
                                         ForEach(viewModel.topArtists, id: \.url) { artist in
@@ -157,35 +158,32 @@ struct ProfileView: View {
                         }
                         .padding(.top)
                         
-                        // Favorite artworks
+                        // Artwork Logs - Vertical List
                         VStack(alignment: .leading) {
-                            Text("Pinned art")
+                            Text("Your Logs")
                                 .font(.title2)
                                 .bold()
                                 .padding(.horizontal)
                             
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 15) {
-                                    ForEach(["Artwork 1", "Artwork 2", "Artwork 3"], id: \.self) { artwork in
-                                        ArtworkThumbnail(artwork: artwork)
-                                    }
-                                }
-                                .padding(.horizontal)
-                            }
-                        }
-                        .padding(.top)
-                        
-                        // Most recent logs
-                        VStack(alignment: .leading) {
-                            Text("Logs")
-                                .font(.title2)
-                                .bold()
-                                .padding(.horizontal)
-                            
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 15) {
-                                    ForEach(["Log 1", "Log 2", "Log 3"], id: \.self) { log in
-                                        ArtworkThumbnail(artwork: log)
+                            if viewModel.isLoadingReviews {
+                                ProgressView()
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                            } else if viewModel.userReviews.isEmpty {
+                                Text("No artwork logs yet")
+                                    .foregroundColor(.secondary)
+                                    .padding()
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                            } else {
+                                // Vertical list of artwork logs
+                                LazyVStack(spacing: 12) {
+                                    ForEach(viewModel.userReviews, id: \.id) { review in
+                                        Button {
+                                            selectedReview = review
+                                        } label: {
+                                            ArtworkLogItem(review: review)
+                                        }
+                                        .buttonStyle(PlainButtonStyle())
                                     }
                                 }
                                 .padding(.horizontal)
@@ -194,7 +192,7 @@ struct ProfileView: View {
                         .padding(.top)
                     }
                 }
-                .padding(.bottom)
+                .padding(.bottom, 30)
             }
         }
         .navigationBarHidden(true)
@@ -202,6 +200,7 @@ struct ProfileView: View {
             if let userId = session.user?.uid {
                 viewModel.fetchUserProfile(userId: userId)
                 viewModel.fetchTopArtists(userId: userId)
+                viewModel.fetchUserReviews(userId: userId)
             }
         }
         .sheet(isPresented: $navigateToProfileSetup) {
@@ -223,6 +222,14 @@ struct ProfileView: View {
         )) {
             if let artistUrl = selectedArtistUrl {
                 ArtistDetailView(artistUrl: artistUrl)
+            }
+        }
+        .navigationDestination(isPresented: Binding(
+            get: { selectedReview != nil },
+            set: { if !$0 { selectedReview = nil } }
+        )) {
+            if let review = selectedReview {
+                ArtworkReviewDetailView(review: review)
             }
         }
     }
@@ -292,25 +299,11 @@ struct ProfileView: View {
                     }
                 }
                 
+                // Artist Name fetching and display removed (simplified)
+                
+               
             }
         }
         .buttonStyle(PlainButtonStyle())
-    }
-}
-
-// Keep this structure unchanged
-struct ArtworkThumbnail: View {
-    var artwork: String
-    
-    var body: some View {
-        VStack {
-            Image(systemName: "photo")
-                .resizable()
-                .frame(width: 50, height: 50)
-                .clipShape(Circle())
-            Text(artwork)
-                .font(.footnote)
-                .frame(maxWidth: 70)
-        }
     }
 }

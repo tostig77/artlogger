@@ -42,8 +42,8 @@ struct ArtDetailsFormView: View {
                         .disabled(!isFormValid || isLookingUpArtist)
                     }
                 }
-                .scrollContentBackground(.hidden) // ✅ Remove default Form background
-                .background(Color("MutedGreenLight")) // ✅ Match background
+                .scrollContentBackground(.hidden)
+                .background(Color("MutedGreenLight"))
             }
         }
         .navigationTitle("Artwork Details")
