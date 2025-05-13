@@ -2,6 +2,24 @@ import SwiftUI
 import Firebase
 import FirebaseFirestore
 
+let pastelColors: [Color] = [
+    Color(red: 0.98, green: 0.85, blue: 0.85),
+    Color(red: 0.85, green: 0.93, blue: 0.98),
+    Color(red: 0.90, green: 0.87, blue: 0.98),
+    Color(red: 0.87, green: 0.95, blue: 0.87),
+    Color(red: 1.00, green: 0.97, blue: 0.85)
+]
+
+let emojiList: [String] = ["🎨", "🖼", "🌸", "🧠", "📚", "✨", "🌿", "💡", "🎭", "🧵"]
+
+func stableHash(_ string: String) -> Int {
+    var hash = 5381
+    for char in string.utf8 {
+        hash = ((hash << 5) &+ hash) &+ Int(char)
+    }
+    return abs(hash)
+}
+
 // User Profile Data Model
 struct UserProfile {
     var username: String
@@ -32,7 +50,7 @@ struct ProfileView: View {
                             .font(.system(size: 20, weight: .medium, design: .rounded))
                             .foregroundColor(Color("MutedGreenAccent"))
                     }
-                    .padding(12)
+                    .padding(4)
                     
                     Spacer()
                     
@@ -96,10 +114,17 @@ struct ProfileView: View {
                     } else {
                         // Profile header
                         HStack(spacing: 20) {
-                            Image(systemName: "person.circle.fill")
-                                .resizable()
-                                .frame(width: 80, height: 80)
-                                .clipShape(Circle())
+                            let hash = stableHash(viewModel.userProfile.username)
+                            let emoji = emojiList[hash % emojiList.count]
+                            let backgroundColor = pastelColors[hash % pastelColors.count]
+
+                            ZStack {
+                                Circle()
+                                    .fill(backgroundColor)
+                                    .frame(width: 80, height: 80)
+                                Text(emoji)
+                                    .font(.system(size: 36))
+                            }
                             
                             VStack(alignment: .leading) {
                                 if viewModel.userProfile.username.isEmpty {
@@ -160,7 +185,7 @@ struct ProfileView: View {
                         
                         // Artwork Logs - Vertical List
                         VStack(alignment: .leading) {
-                            Text("Your Logs")
+                            Text("Your logs")
                                 .font(.title2)
                                 .bold()
                                 .padding(.horizontal)
